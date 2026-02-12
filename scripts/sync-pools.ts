@@ -12,139 +12,141 @@ import postgres from "postgres";
 import { eq } from "drizzle-orm";
 import { pools } from "../src/lib/db/schema";
 import {
-  fetchNationalFacilities,
-  fetchFacilityDetails,
-  isSwimmingPool,
+  fetchSwimmingPools,
   type FacilityItem,
-  type FacilityDetailItem,
 } from "../src/lib/api/public-data";
 import { sidoToSlug, toSlug, poolNameToSlug } from "../src/lib/utils/region";
 
 const client = postgres(process.env.DATABASE_URL!, { prepare: false });
 const db = drizzle(client);
 
-/* ── Main ── */
-
 async function main() {
   console.log("🏊 수영장 데이터 동기화 시작...\n");
 
-  // 1) 전국체육시설 정보에서 수영장 수집
-  console.log("📡 [1/3] 전국체육시설 API 호출...");
-  const allFacilities: FacilityItem[] = [];
+  // 1) 전체 수영장 수 확인
+  const first = await fetchSwimmingPools(1, 1);
+  const totalCount = first.totalCount;
+  console.log(`📊 전체 수영장 ${totalCount}건 확인\n`);
 
-  let page = 1;
-  while (true) {
-    try {
-      const items = await fetchNationalFacilities(page, 1000);
-      if (!items.length) break;
-      allFacilities.push(...items);
-      console.log(`  → 페이지 ${page}: ${items.length}건 수신 (총 ${allFacilities.length}건)`);
-      page++;
+  // 2) 페이지별로 수집
+  const allItems: FacilityItem[] = [];
+  const perPage = 1000;
+  const totalPages = Math.ceil(totalCount / perPage);
 
-      // API 부하 방지
-      await sleep(300);
-    } catch (e) {
-      console.log(`  → 페이지 ${page} 에러, 수집 종료`);
-      break;
-    }
+  for (let page = 1; page <= totalPages; page++) {
+    const { items } = await fetchSwimmingPools(page, perPage);
+    allItems.push(...items);
+    console.log(`📡 페이지 ${page}/${totalPages}: ${items.length}건 (총 ${allItems.length}건)`);
+    await sleep(300);
   }
 
-  // 수영장만 필터
-  const swimmingPools = allFacilities.filter(isSwimmingPool);
-  console.log(`\n✅ 전체 ${allFacilities.length}건 중 수영장 ${swimmingPools.length}건 필터링\n`);
+  // 정상운영 수영장만
+  const operating = allItems.filter((item) => item.faci_stat_nm === "정상운영");
+  console.log(`\n✅ 정상운영 수영장: ${operating.length}건 / 전체 ${allItems.length}건\n`);
 
-  // 2) 공공체육시설 상세 정보 수집 (레인 수, 면적 등)
-  console.log("📡 [2/3] 공공체육시설 상세 API 호출...");
-  const allDetails: FacilityDetailItem[] = [];
-
-  page = 1;
-  while (true) {
-    try {
-      const items = await fetchFacilityDetails(page, 1000);
-      if (!items.length) break;
-      allDetails.push(...items);
-      console.log(`  → 페이지 ${page}: ${items.length}건 수신 (총 ${allDetails.length}건)`);
-      page++;
-      await sleep(300);
-    } catch (e) {
-      console.log(`  → 페이지 ${page} 에러, 수집 종료`);
-      break;
-    }
-  }
-
-  // 상세 정보를 이름으로 매핑
-  const detailMap = new Map<string, FacilityDetailItem>();
-  for (const d of allDetails) {
-    if (d.facltNm) detailMap.set(d.facltNm.trim(), d);
-  }
-
-  console.log(`\n✅ 상세 정보 ${allDetails.length}건 수집\n`);
-
-  // 3) DB에 upsert
-  console.log("💾 [3/3] DB 저장 중...");
+  // 3) DB에 저장
+  console.log("💾 DB 저장 중...");
   let inserted = 0;
   let updated = 0;
   let errors = 0;
 
-  for (const item of swimmingPools) {
+  for (const item of operating) {
     try {
-      const sido = item.ctprvnNm?.trim() || "";
-      const sigungu = item.signguNm?.trim() || "";
-      const name = item.facltNm?.trim() || "";
+      const name = item.faci_nm?.trim();
+      const sido = item.addr_ctpv_nm?.trim();
+      const sigungu = item.cpb_nm?.trim() || item.addr_cpb_nm?.trim();
 
       if (!name || !sido) continue;
 
-      const slug = poolNameToSlug(name);
-      const sidoSlug = sidoToSlug(sido);
-      const sigunguSlug = toSlug(sigungu);
+      const slug = poolNameToSlug(`${name}-${sigungu}-${sidoToSlug(sido)}`);
+      const sidoSlugVal = sidoToSlug(sido);
+      const sigunguSlugVal = toSlug(sigungu || "");
 
-      // 상세 정보 매칭
-      const detail = detailMap.get(name);
+      const isPublic = item.faci_gb_nm === "공공";
+      const isIndoor =
+        item.inout_gbn_nm === "실내"
+          ? true
+          : item.inout_gbn_nm === "실외"
+          ? false
+          : null;
 
       const poolData = {
         name,
         slug,
-        type: "public" as const,
-        indoor: detail?.indoorOutdoorGb?.includes("실내") ?? null,
+        type: isPublic ? ("public" as const) : ("private" as const),
+        indoor: isIndoor,
         sido,
-        sidoSlug,
-        sigungu,
-        sigunguSlug,
-        address: item.rdnmadr || item.lnmadr || null,
-        lat: item.fcltyLa || null,
-        lng: item.fcltyLo || null,
-        phone: item.telNo || null,
-        website: item.hmpgAddr || null,
-        laneCount: detail?.laneCo ? parseInt(detail.laneCo) || null : null,
-        poolArea: detail?.swmplSmr || null,
-        poolLength: detail?.swmplLt ? parseInt(detail.swmplLt) || null : null,
+        sidoSlug: sidoSlugVal,
+        sigungu: sigungu || "",
+        sigunguSlug: sigunguSlugVal,
+        address: item.faci_road_addr || item.faci_addr || null,
+        lat: item.faci_lat || null,
+        lng: item.faci_lot || null,
+        phone: item.faci_tel_no || null,
+        website: null,
+        laneCount: null,
+        poolArea: item.faci_gfa ? String(item.faci_gfa) : null,
+        poolLength: null,
+        safetyGrade: item.atnm_chk_yn === "Y" ? "점검완료" : null,
         isOperating: true,
-        sourceApi: "national_facility",
-        sourceId: `nf_${slug}`,
+        sourceApi: "B551014_SFMS_FACI",
+        sourceId: item.faci_cd,
         updatedAt: new Date(),
       };
 
-      // slug 기준 upsert
+      // sourceId 기준 upsert
       const existing = await db
         .select({ id: pools.id })
         .from(pools)
-        .where(eq(pools.slug, slug))
+        .where(eq(pools.sourceId, item.faci_cd))
         .limit(1);
 
       if (existing.length > 0) {
-        await db.update(pools).set(poolData).where(eq(pools.slug, slug));
+        await db
+          .update(pools)
+          .set(poolData)
+          .where(eq(pools.sourceId, item.faci_cd));
         updated++;
       } else {
         await db.insert(pools).values(poolData);
         inserted++;
       }
     } catch (e: any) {
-      // slug 중복 등 무시
       if (e.code === "23505") {
-        // unique violation — skip
+        // unique slug conflict — append sourceId
+        try {
+          const name = item.faci_nm?.trim();
+          const slug = poolNameToSlug(`${name}-${item.faci_cd.slice(0, 8)}`);
+          const sido = item.addr_ctpv_nm?.trim();
+          const sigungu = item.cpb_nm?.trim() || item.addr_cpb_nm?.trim();
+
+          await db.insert(pools).values({
+            name: name || "",
+            slug,
+            type: item.faci_gb_nm === "공공" ? "public" : "private",
+            indoor: item.inout_gbn_nm === "실내" ? true : item.inout_gbn_nm === "실외" ? false : null,
+            sido: sido || "",
+            sidoSlug: sidoToSlug(sido || ""),
+            sigungu: sigungu || "",
+            sigunguSlug: toSlug(sigungu || ""),
+            address: item.faci_road_addr || item.faci_addr || null,
+            lat: item.faci_lat || null,
+            lng: item.faci_lot || null,
+            phone: item.faci_tel_no || null,
+            poolArea: item.faci_gfa ? String(item.faci_gfa) : null,
+            safetyGrade: item.atnm_chk_yn === "Y" ? "점검완료" : null,
+            isOperating: true,
+            sourceApi: "B551014_SFMS_FACI",
+            sourceId: item.faci_cd,
+            updatedAt: new Date(),
+          });
+          inserted++;
+        } catch {
+          errors++;
+        }
       } else {
         errors++;
-        if (errors <= 5) console.error(`  ⚠ 에러: ${e.message}`);
+        if (errors <= 5) console.error(`  ⚠ ${item.faci_nm}: ${e.message}`);
       }
     }
   }
@@ -152,7 +154,7 @@ async function main() {
   console.log(`\n🎉 동기화 완료!`);
   console.log(`   신규: ${inserted}건`);
   console.log(`   업데이트: ${updated}건`);
-  console.log(`   에러: ${errors}건`);
+  console.log(`   에러: ${errors}건\n`);
 
   await client.end();
   process.exit(0);
