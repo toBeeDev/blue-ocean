@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { db } from "@/lib/db";
 import { pools } from "@/lib/db/schema";
 import { eq, count, desc } from "drizzle-orm";
