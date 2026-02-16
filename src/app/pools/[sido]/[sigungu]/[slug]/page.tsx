@@ -14,6 +14,10 @@ import {
   ExternalLink,
   Navigation,
   Map,
+  Droplets,
+  SquareArrowOutUpRight,
+  Copy,
+  Info,
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -42,14 +46,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const pool = await getPool(slug);
   if (!pool) return { title: "수영장을 찾을 수 없습니다" };
 
-  const desc = `${pool.sido} ${pool.sigungu} ${pool.name}. ${pool.indoor ? "실내" : "실외"} ${pool.type === "public" ? "공공" : "민간"} 수영장. 주소, 시설 정보, 자유수영 시간표를 확인하세요.`;
+  const description = `${pool.sido} ${pool.sigungu} ${pool.name}. ${pool.indoor ? "실내" : "실외"} ${pool.type === "public" ? "공공" : "민간"} 수영장. 주소, 시설 정보, 자유수영 시간표를 확인하세요.`;
 
   return {
     title: `${pool.name} — 블루오션`,
-    description: desc,
+    description,
     openGraph: {
       title: `${pool.name} — 블루오션`,
-      description: desc,
+      description,
       type: "website",
       locale: "ko_KR",
     },
@@ -67,7 +71,6 @@ export default async function PoolDetailPage({ params }: Props) {
     ""
   );
 
-  // 같은 시군구의 다른 수영장
   const nearbyPools = await db.query.pools.findMany({
     where: and(
       eq(pools.sidoSlug, sidoSlug),
@@ -104,33 +107,32 @@ export default async function PoolDetailPage({ params }: Props) {
       ? `https://map.naver.com/p/search/${encodeURIComponent(pool.name)}?c=${pool.lng},${pool.lat},15,0,0,0,dh`
       : `https://map.naver.com/p/search/${encodeURIComponent(pool.name)}`;
 
-  const infoItems = [
-    {
-      icon: Building2,
-      label: "유형",
-      value: `${pool.type === "public" ? "공공" : "민간"}${pool.indoor !== null ? (pool.indoor ? " · 실내" : " · 실외") : ""}`,
+  const isPublic = pool.type === "public";
+
+  // 시설 정보 리스트 (값이 있는 것만)
+  const facilityDetails = [
+    { label: "유형", value: isPublic ? "공공 체육시설" : "민간 체육시설" },
+    pool.indoor !== null && {
+      label: "실내/외",
+      value: pool.indoor ? "실내 수영장" : "실외 수영장",
     },
     pool.poolArea && {
-      icon: Ruler,
-      label: "면적",
+      label: "시설 면적",
       value: `${Number(pool.poolArea).toLocaleString()}㎡`,
     },
     pool.laneCount && {
-      icon: Waves,
-      label: "레인",
+      label: "레인 수",
       value: `${pool.laneCount}레인`,
     },
     pool.poolLength && {
-      icon: Ruler,
-      label: "길이",
+      label: "수영장 길이",
       value: `${pool.poolLength}m`,
     },
     pool.safetyGrade && {
-      icon: Shield,
-      label: "안전점검",
+      label: "안전점검 등급",
       value: pool.safetyGrade,
     },
-  ].filter(Boolean) as { icon: typeof Building2; label: string; value: string }[];
+  ].filter(Boolean) as { label: string; value: string }[];
 
   return (
     <>
@@ -144,15 +146,61 @@ export default async function PoolDetailPage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
 
-      <div className="min-h-screen pt-20 pb-16">
-        {/* Hero */}
-        <section className="relative bg-gradient-to-b from-ocean-50 to-white py-12 sm:py-16">
-          <div className="mx-auto max-w-7xl px-5 sm:px-8">
+      <div className="min-h-screen bg-[#f8fafb]">
+        {/* ═══════════════════════════════════════
+            HERO — immersive gradient header
+        ═══════════════════════════════════════ */}
+        <section className="relative pt-20 overflow-hidden">
+          {/* Gradient background — aquatic palette */}
+          <div
+            className={`absolute inset-0 ${
+              isPublic
+                ? "bg-gradient-to-br from-ocean-600 via-ocean-500 to-aqua-600"
+                : "bg-gradient-to-br from-aqua-600 via-ocean-500 to-ocean-600"
+            }`}
+          />
+
+          {/* Layered wave patterns for depth */}
+          <div className="absolute inset-0 opacity-[0.07]">
+            <svg
+              width="100%"
+              height="100%"
+              viewBox="0 0 1440 400"
+              preserveAspectRatio="none"
+              className="absolute bottom-0"
+            >
+              <path
+                d="M0 280 C240 220, 480 340, 720 280 S1200 220, 1440 280 V400 H0Z"
+                fill="white"
+              />
+              <path
+                d="M0 320 C360 260, 600 380, 960 320 S1320 260, 1440 320 V400 H0Z"
+                fill="white"
+                opacity="0.5"
+              />
+            </svg>
+          </div>
+
+          {/* Floating orbs */}
+          <div className="absolute top-16 right-[10%] w-64 h-64 rounded-full bg-white/[0.04] blur-[80px]" />
+          <div className="absolute bottom-8 left-[5%] w-48 h-48 rounded-full bg-aqua-300/[0.08] blur-[60px]" />
+
+          {/* Grid pattern */}
+          <div
+            className="absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle, white 1px, transparent 1px)",
+              backgroundSize: "40px 40px",
+            }}
+          />
+
+          <div className="relative mx-auto max-w-7xl px-5 sm:px-8 pb-24 pt-8 sm:pt-12">
             {/* Breadcrumb */}
-            <nav className="flex items-center gap-1.5 text-sm text-muted-foreground mb-6 flex-wrap">
+            <nav className="flex items-center gap-1.5 text-sm text-white/60 mb-8 flex-wrap">
               <Link
                 href="/pools"
-                className="hover:text-ocean-500 transition-colors flex items-center gap-1"
+                className="hover:text-white transition-colors flex items-center gap-1"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 전국
@@ -160,74 +208,131 @@ export default async function PoolDetailPage({ params }: Props) {
               <ChevronRight className="w-3 h-3" />
               <Link
                 href={`/pools/${sidoSlug}`}
-                className="hover:text-ocean-500 transition-colors"
+                className="hover:text-white transition-colors"
               >
                 {shortSido}
               </Link>
               <ChevronRight className="w-3 h-3" />
               <Link
                 href={`/pools/${sidoSlug}/${sigunguSlug}`}
-                className="hover:text-ocean-500 transition-colors"
+                className="hover:text-white transition-colors"
               >
                 {pool.sigungu}
               </Link>
               <ChevronRight className="w-3 h-3" />
-              <span className="text-foreground font-medium">{pool.name}</span>
+              <span className="text-white/90 font-medium">{pool.name}</span>
             </nav>
 
-            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-              <div>
-                {/* Badges */}
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="px-2.5 py-1 rounded-lg bg-ocean-50 text-[13px] font-semibold text-ocean-600 border border-ocean-100">
-                    {pool.type === "public" ? "공공" : "민간"}
-                  </span>
-                  {pool.indoor !== null && (
-                    <span className="px-2.5 py-1 rounded-lg bg-muted text-[13px] font-medium text-muted-foreground">
-                      {pool.indoor ? "실내" : "실외"}
-                    </span>
-                  )}
-                  {pool.safetyGrade && (
-                    <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-[13px] font-semibold text-emerald-600 border border-emerald-100 flex items-center gap-1">
-                      <Shield className="w-3 h-3" />
-                      {pool.safetyGrade}
-                    </span>
-                  )}
-                </div>
-
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
-                  {pool.name}
-                </h1>
-
-                <p className="mt-2 text-muted-foreground flex items-center gap-1.5">
-                  <MapPin className="w-4 h-4 text-ocean-500 shrink-0" />
-                  {pool.address || `${pool.sido} ${pool.sigungu}`}
-                </p>
+            {/* Pool icon + badges */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-center">
+                <Droplets className="w-6 h-6 text-white/80" />
               </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-white/15 text-white backdrop-blur-sm border border-white/10">
+                  {isPublic ? "공공" : "민간"}
+                </span>
+                {pool.indoor !== null && (
+                  <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-white/15 text-white backdrop-blur-sm border border-white/10">
+                    {pool.indoor ? "실내" : "실외"}
+                  </span>
+                )}
+                {pool.safetyGrade && (
+                  <span className="px-3 py-1 rounded-full text-[12px] font-semibold bg-emerald-400/20 text-emerald-100 backdrop-blur-sm border border-emerald-400/20 flex items-center gap-1">
+                    <Shield className="w-3 h-3" />
+                    {pool.safetyGrade}
+                  </span>
+                )}
+              </div>
+            </div>
 
-              {/* Quick actions */}
-              <div className="flex flex-wrap gap-2 shrink-0">
-                {pool.phone && (
-                  <a
-                    href={`tel:${pool.phone}`}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-ocean-500 text-white text-sm font-semibold hover:bg-ocean-600 transition-colors shadow-[0_2px_12px_rgba(10,122,255,0.3)]"
-                  >
-                    <Phone className="w-4 h-4" />
-                    전화하기
-                  </a>
-                )}
-                {pool.website && (
-                  <a
-                    href={pool.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
-                  >
-                    <Globe className="w-4 h-4" />
-                    홈페이지
-                    <ExternalLink className="w-3 h-3 text-muted-foreground" />
-                  </a>
-                )}
+            {/* Name */}
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white leading-tight">
+              {pool.name}
+            </h1>
+
+            {/* Address */}
+            <p className="mt-3 text-white/70 flex items-center gap-2 text-[15px]">
+              <MapPin className="w-4 h-4 shrink-0 text-white/50" />
+              {pool.address || `${pool.sido} ${pool.sigungu}`}
+            </p>
+          </div>
+
+          {/* Bottom curve */}
+          <div className="absolute bottom-0 left-0 right-0">
+            <svg
+              viewBox="0 0 1440 48"
+              fill="none"
+              className="w-full"
+              preserveAspectRatio="none"
+            >
+              <path
+                d="M0 48h1440V24C1200 0 960 40 720 24S240 0 0 24v24Z"
+                fill="#f8fafb"
+              />
+            </svg>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════
+            FLOATING ACTION BAR
+        ═══════════════════════════════════════ */}
+        <div className="mx-auto max-w-7xl px-5 sm:px-8 -mt-10 relative z-10">
+          <div className="bg-white rounded-2xl shadow-[0_4px_32px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.02)] p-4 sm:p-5">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* 전화 */}
+              {pool.phone && (
+                <a
+                  href={`tel:${pool.phone}`}
+                  className="inline-flex items-center gap-2.5 px-5 py-3 rounded-xl bg-ocean-500 text-white text-sm font-semibold hover:bg-ocean-600 transition-all duration-200 shadow-[0_2px_12px_rgba(10,122,255,0.3)] hover:shadow-[0_4px_20px_rgba(10,122,255,0.4)]"
+                >
+                  <Phone className="w-4 h-4" />
+                  전화하기
+                  <span className="text-white/60 text-[13px] font-normal hidden sm:inline">
+                    {pool.phone}
+                  </span>
+                </a>
+              )}
+
+              {/* 길찾기 */}
+              <a
+                href={naverMapUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#03C75A] text-white text-sm font-semibold hover:bg-[#02b351] transition-colors"
+              >
+                <Navigation className="w-4 h-4" />
+                네이버 길찾기
+              </a>
+
+              {kakaoMapUrl && (
+                <a
+                  href={kakaoMapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-[#FEE500] text-[#3C1E1E] text-sm font-semibold hover:bg-[#FDD835] transition-colors"
+                >
+                  <Map className="w-4 h-4" />
+                  카카오맵
+                </a>
+              )}
+
+              {/* 홈페이지 */}
+              {pool.website && (
+                <a
+                  href={pool.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+                >
+                  <Globe className="w-4 h-4" />
+                  홈페이지
+                  <ExternalLink className="w-3 h-3 text-muted-foreground" />
+                </a>
+              )}
+
+              {/* 공유 — 오른쪽으로 밀기 */}
+              <div className="sm:ml-auto">
                 <ShareButton
                   title={pool.name}
                   description={`${pool.sido} ${pool.sigungu} ${pool.name}`}
@@ -235,211 +340,281 @@ export default async function PoolDetailPage({ params }: Props) {
               </div>
             </div>
           </div>
-        </section>
+        </div>
 
-        {/* Content */}
-        <div className="mx-auto max-w-7xl px-5 sm:px-8 mt-10">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Main content */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Facility Info */}
-              <section className="rounded-2xl border border-border/60 bg-white p-6">
-                <h2 className="text-lg font-bold text-foreground mb-5">
-                  시설 정보
-                </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {infoItems.map((item) => (
+        {/* ═══════════════════════════════════════
+            MAIN CONTENT
+        ═══════════════════════════════════════ */}
+        <div className="mx-auto max-w-7xl px-5 sm:px-8 mt-8 pb-16">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+            {/* ── Left column: main content ── */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* 시설 정보 */}
+              <section className="rounded-2xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] border border-black/[0.03] p-6 sm:p-8">
+                <div className="flex items-center gap-2.5 mb-6">
+                  <div className="w-8 h-8 rounded-lg bg-ocean-50 flex items-center justify-center">
+                    <Info className="w-4 h-4 text-ocean-500" />
+                  </div>
+                  <h2 className="text-lg font-bold text-foreground">
+                    시설 정보
+                  </h2>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {facilityDetails.map((item) => (
                     <div
                       key={item.label}
-                      className="flex items-start gap-3 p-3 rounded-xl bg-muted/30"
+                      className="flex items-center justify-between p-4 rounded-xl bg-[#f8fafb] border border-black/[0.02]"
                     >
-                      <div className="w-9 h-9 rounded-lg bg-ocean-50 flex items-center justify-center shrink-0">
-                        <item.icon className="w-4 h-4 text-ocean-500" />
-                      </div>
-                      <div>
-                        <p className="text-[12px] text-muted-foreground">
-                          {item.label}
-                        </p>
-                        <p className="text-sm font-semibold text-foreground">
-                          {item.value}
-                        </p>
-                      </div>
+                      <span className="text-[13px] text-muted-foreground">
+                        {item.label}
+                      </span>
+                      <span className="text-[14px] font-semibold text-foreground">
+                        {item.value}
+                      </span>
                     </div>
                   ))}
                 </div>
               </section>
 
-              {/* Map + Map Links */}
-              {pool.lat && pool.lng && (
-                <section className="rounded-2xl border border-border/60 bg-white p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-bold text-foreground">위치</h2>
-                    <div className="flex gap-2">
-                      {kakaoMapUrl && (
-                        <a
-                          href={kakaoMapUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium bg-[#FEE500] text-[#3C1E1E] hover:bg-[#FDD835] transition-colors"
-                        >
-                          <Map className="w-3.5 h-3.5" />
-                          카카오맵
-                        </a>
-                      )}
-                      <a
-                        href={naverMapUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium bg-[#03C75A] text-white hover:bg-[#02b351] transition-colors"
-                      >
-                        <Navigation className="w-3.5 h-3.5" />
-                        네이버지도
-                      </a>
-                    </div>
+              {/* 위치 */}
+              <section className="rounded-2xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] border border-black/[0.03] p-6 sm:p-8">
+                <div className="flex items-center gap-2.5 mb-6">
+                  <div className="w-8 h-8 rounded-lg bg-ocean-50 flex items-center justify-center">
+                    <MapPin className="w-4 h-4 text-ocean-500" />
                   </div>
-                  <div className="rounded-xl bg-muted/30 h-64 sm:h-80 flex items-center justify-center border border-border/40 overflow-hidden">
-                    {/* 정적 지도 이미지 placeholder */}
-                    <div className="text-center">
-                      <MapPin className="w-8 h-8 mx-auto mb-2 text-ocean-300" />
-                      <p className="text-sm text-muted-foreground">
-                        {pool.address}
-                      </p>
-                      <div className="flex justify-center gap-2 mt-3">
-                        {kakaoMapUrl && (
+                  <h2 className="text-lg font-bold text-foreground">위치</h2>
+                </div>
+
+                {/* 주소 행 */}
+                <div className="flex items-start gap-3 mb-5 p-4 rounded-xl bg-[#f8fafb] border border-black/[0.02]">
+                  <MapPin className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] text-foreground leading-relaxed">
+                      {pool.address || `${pool.sido} ${pool.sigungu}`}
+                    </p>
+                    <p className="text-[12px] text-muted-foreground mt-1">
+                      {pool.sido} {pool.sigungu}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 지도 placeholder */}
+                {pool.lat && pool.lng && (
+                  <div className="relative rounded-xl overflow-hidden border border-black/[0.04]">
+                    <div className="bg-gradient-to-br from-ocean-50/80 via-[#f0f7ff] to-aqua-50/60 h-56 sm:h-72 flex items-center justify-center">
+                      {/* Decorative grid */}
+                      <div
+                        className="absolute inset-0 opacity-[0.06]"
+                        style={{
+                          backgroundImage:
+                            "linear-gradient(rgba(10,122,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(10,122,255,0.3) 1px, transparent 1px)",
+                          backgroundSize: "32px 32px",
+                        }}
+                      />
+                      {/* Pin */}
+                      <div className="relative flex flex-col items-center">
+                        <div className="w-14 h-14 rounded-full bg-ocean-500 shadow-[0_4px_24px_rgba(10,122,255,0.35)] flex items-center justify-center mb-3">
+                          <MapPin className="w-6 h-6 text-white" />
+                        </div>
+                        <p className="text-[13px] font-medium text-ocean-700 text-center max-w-[280px]">
+                          {pool.name}
+                        </p>
+                        <div className="flex gap-3 mt-4">
+                          {kakaoMapUrl && (
+                            <a
+                              href={kakaoMapUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold bg-white/90 text-ocean-600 hover:bg-white transition-colors shadow-sm border border-ocean-100/60"
+                            >
+                              카카오맵에서 보기
+                              <SquareArrowOutUpRight className="w-3 h-3" />
+                            </a>
+                          )}
                           <a
-                            href={kakaoMapUrl}
+                            href={naverMapUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[13px] text-ocean-500 hover:underline"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold bg-white/90 text-[#03C75A] hover:bg-white transition-colors shadow-sm border border-emerald-100/60"
                           >
-                            카카오맵에서 보기 &rarr;
+                            네이버지도에서 보기
+                            <SquareArrowOutUpRight className="w-3 h-3" />
                           </a>
-                        )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </section>
-              )}
+                )}
+              </section>
             </div>
 
-            {/* Sidebar */}
+            {/* ── Right column: sidebar ── */}
             <div className="space-y-6">
-              {/* Contact */}
-              <div className="rounded-2xl border border-border/60 bg-white p-5">
-                <h3 className="text-sm font-bold text-foreground mb-4">
-                  연락처 & 위치
+              {/* 연락처 카드 */}
+              <div className="rounded-2xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] border border-black/[0.03] p-6">
+                <h3 className="text-[15px] font-bold text-foreground mb-5 flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-ocean-500" />
+                  연락처
                 </h3>
-                <div className="space-y-3">
-                  {pool.address && (
-                    <div className="flex items-start gap-2.5">
-                      <MapPin className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {pool.address}
-                      </p>
-                    </div>
-                  )}
+                <div className="space-y-4">
                   {pool.phone && (
-                    <div className="flex items-center gap-2.5">
-                      <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <a
-                        href={`tel:${pool.phone}`}
-                        className="text-sm text-ocean-500 hover:underline"
-                      >
-                        {pool.phone}
-                      </a>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-ocean-50 flex items-center justify-center shrink-0">
+                        <Phone className="w-4 h-4 text-ocean-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] text-muted-foreground">
+                          전화번호
+                        </p>
+                        <a
+                          href={`tel:${pool.phone}`}
+                          className="text-[14px] font-medium text-ocean-600 hover:underline"
+                        >
+                          {pool.phone}
+                        </a>
+                      </div>
                     </div>
                   )}
+
                   {pool.website && (
-                    <div className="flex items-center gap-2.5">
-                      <Globe className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <a
-                        href={pool.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-ocean-500 hover:underline truncate"
-                      >
-                        {pool.website}
-                      </a>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-ocean-50 flex items-center justify-center shrink-0">
+                        <Globe className="w-4 h-4 text-ocean-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] text-muted-foreground">
+                          홈페이지
+                        </p>
+                        <a
+                          href={pool.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[14px] font-medium text-ocean-600 hover:underline truncate block"
+                        >
+                          {pool.website.replace(/^https?:\/\//, "")}
+                        </a>
+                      </div>
                     </div>
+                  )}
+
+                  {pool.address && (
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-ocean-50 flex items-center justify-center shrink-0">
+                        <MapPin className="w-4 h-4 text-ocean-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] text-muted-foreground">
+                          주소
+                        </p>
+                        <p className="text-[14px] text-foreground leading-snug">
+                          {pool.address}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {!pool.phone && !pool.website && (
+                    <p className="text-[13px] text-muted-foreground">
+                      등록된 연락처 정보가 없습니다.
+                    </p>
                   )}
                 </div>
               </div>
 
-              {/* Map quick links */}
-              <div className="rounded-2xl border border-border/60 bg-white p-5">
-                <h3 className="text-sm font-bold text-foreground mb-4">
+              {/* 길찾기 카드 */}
+              <div className="rounded-2xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)] border border-black/[0.03] p-6">
+                <h3 className="text-[15px] font-bold text-foreground mb-5 flex items-center gap-2">
+                  <Navigation className="w-4 h-4 text-ocean-500" />
                   길찾기
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-2.5">
+                  <a
+                    href={naverMapUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3.5 px-4 py-3.5 rounded-xl bg-[#f8fafb] hover:bg-[#03C75A]/[0.06] border border-transparent hover:border-[#03C75A]/20 transition-all duration-200 group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-[#03C75A] flex items-center justify-center shadow-sm">
+                      <Navigation className="w-4.5 h-4.5 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[14px] font-semibold text-foreground">
+                        네이버지도
+                      </p>
+                      <p className="text-[12px] text-muted-foreground">
+                        길찾기 · 주변 정보
+                      </p>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-muted-foreground/30 group-hover:text-[#03C75A] transition-colors" />
+                  </a>
+
                   {kakaoMapUrl && (
                     <a
                       href={kakaoMapUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/50 transition-colors"
+                      className="flex items-center gap-3.5 px-4 py-3.5 rounded-xl bg-[#f8fafb] hover:bg-[#FEE500]/[0.12] border border-transparent hover:border-[#FEE500]/40 transition-all duration-200 group"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-[#FEE500] flex items-center justify-center">
-                        <Map className="w-4 h-4 text-[#3C1E1E]" />
+                      <div className="w-10 h-10 rounded-xl bg-[#FEE500] flex items-center justify-center shadow-sm">
+                        <Map className="w-4.5 h-4.5 text-[#3C1E1E]" />
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">
+                      <div className="flex-1">
+                        <p className="text-[14px] font-semibold text-foreground">
                           카카오맵
                         </p>
                         <p className="text-[12px] text-muted-foreground">
                           지도에서 보기
                         </p>
                       </div>
-                      <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/40 ml-auto" />
+                      <ExternalLink className="w-4 h-4 text-muted-foreground/30 group-hover:text-[#FDD835] transition-colors" />
                     </a>
                   )}
-                  <a
-                    href={naverMapUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-[#03C75A] flex items-center justify-center">
-                      <Navigation className="w-4 h-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        네이버지도
-                      </p>
-                      <p className="text-[12px] text-muted-foreground">
-                        길찾기
-                      </p>
-                    </div>
-                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground/40 ml-auto" />
-                  </a>
                 </div>
               </div>
 
-              {/* Data source */}
-              <div className="rounded-2xl border border-border/60 bg-muted/20 p-5">
-                <p className="text-[12px] text-muted-foreground">
-                  데이터 출처: 공공데이터포털 (전국체육시설 정보)
-                </p>
-                <p className="text-[12px] text-muted-foreground mt-1">
-                  마지막 업데이트:{" "}
-                  {pool.updatedAt
-                    ? new Date(pool.updatedAt).toLocaleDateString("ko-KR")
-                    : "-"}
-                </p>
+              {/* 데이터 출처 */}
+              <div className="rounded-2xl bg-[#f8fafb] border border-black/[0.03] p-5">
+                <div className="flex items-start gap-2.5">
+                  <Info className="w-4 h-4 text-muted-foreground/50 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[12px] text-muted-foreground leading-relaxed">
+                      데이터 출처: 공공데이터포털
+                      <br />
+                      (전국 공공·민간 체육시설 현황 정보)
+                    </p>
+                    <p className="text-[12px] text-muted-foreground mt-2">
+                      마지막 업데이트:{" "}
+                      {pool.updatedAt
+                        ? new Date(pool.updatedAt).toLocaleDateString("ko-KR", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })
+                        : "-"}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Nearby Pools */}
+          {/* ═══════════════════════════════════════
+              NEARBY POOLS
+          ═══════════════════════════════════════ */}
           {nearbyPools.length > 0 && (
-            <section className="mt-16">
-              <div className="flex items-end justify-between mb-6">
+            <section className="mt-14">
+              <div className="flex items-end justify-between mb-7">
                 <div>
-                  <h2 className="text-xl font-bold text-foreground">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Waves className="w-4 h-4 text-ocean-500" />
+                    <span className="text-[12px] font-semibold text-ocean-500 uppercase tracking-wider">
+                      Nearby
+                    </span>
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
                     {pool.sigungu} 다른 수영장
                   </h2>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    근처에 있는 수영장을 둘러보세요
-                  </p>
                 </div>
                 <Link
                   href={`/pools/${sidoSlug}/${sigunguSlug}`}
