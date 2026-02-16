@@ -24,6 +24,7 @@ import { notFound } from "next/navigation";
 import PoolCard from "@/components/pool/PoolCard";
 import ShareButton from "@/components/pool/ShareButton";
 import { buildPoolJsonLd, buildBreadcrumbJsonLd } from "@/lib/seo/jsonld";
+import { getMapTileGrid } from "@/lib/utils/map";
 import type { Metadata } from "next";
 
 interface Props {
@@ -399,49 +400,64 @@ export default async function PoolDetailPage({ params }: Props) {
                   </div>
                 </div>
 
-                {/* 지도 placeholder */}
+                {/* 지도 타일 */}
                 {pool.lat && pool.lng && (
                   <div className="relative rounded-xl overflow-hidden border border-black/[0.04]">
-                    <div className="bg-gradient-to-br from-ocean-50/80 via-[#f0f7ff] to-aqua-50/60 h-56 sm:h-72 flex items-center justify-center">
-                      {/* Decorative grid */}
-                      <div
-                        className="absolute inset-0 opacity-[0.06]"
-                        style={{
-                          backgroundImage:
-                            "linear-gradient(rgba(10,122,255,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(10,122,255,0.3) 1px, transparent 1px)",
-                          backgroundSize: "32px 32px",
-                        }}
-                      />
-                      {/* Pin */}
-                      <div className="relative flex flex-col items-center">
-                        <div className="w-14 h-14 rounded-full bg-ocean-500 shadow-[0_4px_24px_rgba(10,122,255,0.35)] flex items-center justify-center mb-3">
-                          <MapPin className="w-6 h-6 text-white" />
+                    {/* 2x2 OSM tile grid */}
+                    <div className="relative h-56 sm:h-72 overflow-hidden">
+                      <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
+                        {getMapTileGrid(Number(pool.lat), Number(pool.lng), 15).map(
+                          (tile) => (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              key={`${tile.col}-${tile.row}`}
+                              src={tile.url}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          )
+                        )}
+                      </div>
+
+                      {/* Subtle overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-white/40 via-transparent to-white/20 pointer-events-none" />
+
+                      {/* Center pin */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-10 h-10 rounded-full bg-ocean-500 shadow-[0_4px_20px_rgba(10,122,255,0.4)] flex items-center justify-center">
+                          <MapPin className="w-5 h-5 text-white" />
                         </div>
-                        <p className="text-[13px] font-medium text-ocean-700 text-center max-w-[280px]">
-                          {pool.name}
-                        </p>
-                        <div className="flex gap-3 mt-4">
-                          {kakaoMapUrl && (
-                            <a
-                              href={kakaoMapUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold bg-white/90 text-ocean-600 hover:bg-white transition-colors shadow-sm border border-ocean-100/60"
-                            >
-                              카카오맵에서 보기
-                              <SquareArrowOutUpRight className="w-3 h-3" />
-                            </a>
-                          )}
+                      </div>
+
+                      {/* Action buttons */}
+                      <div className="absolute bottom-3 left-3 right-3 flex gap-2">
+                        {kakaoMapUrl && (
                           <a
-                            href={naverMapUrl}
+                            href={kakaoMapUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold bg-white/90 text-[#03C75A] hover:bg-white transition-colors shadow-sm border border-emerald-100/60"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-semibold bg-white/95 text-ocean-600 hover:bg-white transition-colors shadow-sm border border-ocean-100/60"
                           >
-                            네이버지도에서 보기
+                            카카오맵
                             <SquareArrowOutUpRight className="w-3 h-3" />
                           </a>
-                        </div>
+                        )}
+                        <a
+                          href={naverMapUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-semibold bg-white/95 text-[#03C75A] hover:bg-white transition-colors shadow-sm border border-emerald-100/60"
+                        >
+                          네이버지도
+                          <SquareArrowOutUpRight className="w-3 h-3" />
+                        </a>
+                      </div>
+
+                      {/* OSM attribution */}
+                      <div className="absolute top-2 right-2">
+                        <span className="text-[9px] text-black/40 bg-white/70 px-1.5 py-0.5 rounded">
+                          © OpenStreetMap
+                        </span>
                       </div>
                     </div>
                   </div>
